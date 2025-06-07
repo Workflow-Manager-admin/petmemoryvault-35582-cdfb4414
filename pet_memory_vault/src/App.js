@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import './App.css';
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ */
 function Navigation({ currentSection, setCurrentSection }) {
-  /** Top navigation bar for main sections */
+  /** Top navigation for main sections */
+  const SECTIONS = [
+    "Home",
+    "Timeline",
+    "Photos",
+    "Milestones",
+    "Scrapbook"
+  ];
   return (
     <nav className="navbar pmv-navbar">
       <div className="container pmv-nav-container">
@@ -12,10 +21,10 @@ function Navigation({ currentSection, setCurrentSection }) {
           PetMemoryVault
         </div>
         <div className="pmv-nav-links">
-          {['Timeline', 'Photos', 'Milestones', 'Scrapbook'].map(section => (
+          {SECTIONS.map(section => (
             <button
               key={section}
-              className={`pmv-nav-link${currentSection === section ? ' active' : ''}`}
+              className={`pmv-nav-link${currentSection === section ? " active" : ""}`}
               onClick={() => setCurrentSection(section)}
             >
               {section}
@@ -27,9 +36,11 @@ function Navigation({ currentSection, setCurrentSection }) {
   );
 }
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ */
 function PetProfileImage({ profileImage, setProfileImage }) {
-  /** Allows users to upload/set their pet's profile image (shown on Home/Timeline) */
+  /** Allows users to upload/set their pet's profile image */
   const handleImageChange = e => {
     if (e.target.files && e.target.files[0]) {
       const reader = new FileReader();
@@ -42,7 +53,7 @@ function PetProfileImage({ profileImage, setProfileImage }) {
     <div className="pmv-profile-img-container">
       <div className="pmv-profile-img-frame">
         <img
-          src={profileImage || '/paw.png'}
+          src={profileImage || "/paw.png"}
           alt="Pet Profile"
           className="pmv-profile-img"
         />
@@ -52,7 +63,7 @@ function PetProfileImage({ profileImage, setProfileImage }) {
         <input
           type="file"
           accept="image/*"
-          style={{ display: 'none' }}
+          style={{ display: "none" }}
           onChange={handleImageChange}
         />
       </label>
@@ -60,11 +71,37 @@ function PetProfileImage({ profileImage, setProfileImage }) {
   );
 }
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * Home Section: only allows editing/updating pet name and profile photo
+ */
+function Home({ profileImage, setProfileImage, petName, setPetName }) {
+  return (
+    <div className="pmv-hero pmv-home-hero">
+      <PetProfileImage profileImage={profileImage} setProfileImage={setProfileImage} />
+      <input
+        className="pmv-input"
+        style={{ fontSize: "1.7rem", fontWeight: 600, textAlign: "center", maxWidth: 340 }}
+        value={petName}
+        onChange={e => setPetName(e.target.value)}
+        placeholder="Pet's Name"
+      />
+      <div className="pmv-main-description">
+        Welcome to your PetMemoryVault! Upload a profile photo and enter your pet's name to get started.
+      </div>
+    </div>
+  );
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * AddMemory: now includes 'age' (years/months) field (required)
+ */
 function AddMemory({ onAdd }) {
-  /** Form to add a memory (text + optional photo) */
   const [memoryText, setMemoryText] = useState('');
   const [memoryPhoto, setMemoryPhoto] = useState(null);
+  const [ageYears, setAgeYears] = useState('');
+  const [ageMonths, setAgeMonths] = useState('');
 
   const handlePhotoChange = e => {
     if (e.target.files && e.target.files[0]) {
@@ -76,15 +113,22 @@ function AddMemory({ onAdd }) {
 
   const handleSubmit = e => {
     e.preventDefault();
+    // Age is optional but at least one field (years/months) must be provided
     if (!memoryText && !memoryPhoto) return;
+    const ageLabel = (ageYears || ageMonths)
+      ? `${ageYears ? ageYears + ' yr' + (parseInt(ageYears) !== 1 ? 's' : '') : ''}${(ageYears && ageMonths) ? ' ' : ''}${ageMonths ? ageMonths + ' mo' + (parseInt(ageMonths) !== 1 ? 's' : '') : ''}`.trim()
+      : '';
     onAdd({
       text: memoryText,
       photo: memoryPhoto,
       date: new Date().toISOString(),
+      age: ageLabel,
       type: 'memory'
     });
     setMemoryText('');
     setMemoryPhoto(null);
+    setAgeYears('');
+    setAgeMonths('');
   };
 
   return (
@@ -97,12 +141,32 @@ function AddMemory({ onAdd }) {
         rows={2}
       />
       <div className="pmv-form-row">
+        <input
+          className="pmv-input"
+          type="number"
+          min="0"
+          max="50"
+          style={{ width: 88 }}
+          value={ageYears}
+          placeholder="Age (yrs)"
+          onChange={e => setAgeYears(e.target.value.replace(/[^0-9]/g, ""))}
+        />
+        <input
+          className="pmv-input"
+          type="number"
+          min="0"
+          max="11"
+          style={{ width: 92 }}
+          value={ageMonths}
+          placeholder="Age (mo)"
+          onChange={e => setAgeMonths(e.target.value.replace(/[^0-9]/g, ""))}
+        />
         <label className="pmv-upload-btn pmv-upload-small">
           {memoryPhoto ? "Change Photo" : "Add Photo"}
           <input
             type="file"
             accept="image/*"
-            style={{ display: 'none' }}
+            style={{ display: "none" }}
             onChange={handlePhotoChange}
           />
         </label>
@@ -117,9 +181,11 @@ function AddMemory({ onAdd }) {
   );
 }
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * Timeline page - all memories including age & photo
+ */
 function Timeline({ memories, onAddMemory, onShare }) {
-  /** Displays all memories in chronological order with add memory option */
   return (
     <div>
       <section className="pmv-timeline-header">
@@ -130,7 +196,10 @@ function Timeline({ memories, onAddMemory, onShare }) {
       <ul className="pmv-timeline-list">
         {[...memories].sort((a, b) => new Date(b.date) - new Date(a.date)).map((item, idx) =>
           <li key={idx} className="pmv-timeline-item">
-            <div className="pmv-timeline-date">{new Date(item.date).toLocaleString()}</div>
+            <div className="pmv-timeline-date">
+              {new Date(item.date).toLocaleString()}
+              {item.age ? <> – <b>{item.age} old</b></> : null}
+            </div>
             <div className="pmv-timeline-content">
               {item.photo && (
                 <img className="pmv-timeline-photo" src={item.photo} alt="memory visual" />
@@ -178,18 +247,35 @@ function Photos({ photos, onUpload }) {
   );
 }
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * AddMilestone: Accepts description, date, and optional photo
+ */
 function AddMilestone({ onAdd }) {
-  /** Small form to add a milestone */
   const [milestone, setMilestone] = useState('');
   const [date, setDate] = useState('');
+  const [milestonePhoto, setMilestonePhoto] = useState(null);
+
+  const handlePhotoChange = e => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setMilestonePhoto(ev.target.result);
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
 
   const handleSubmit = e => {
     e.preventDefault();
     if (!milestone || !date) return;
-    onAdd({ text: milestone, date: new Date(date).toISOString(), type: 'milestone' });
+    onAdd({
+      text: milestone,
+      date: new Date(date).toISOString(),
+      photo: milestonePhoto,
+      type: "milestone"
+    });
     setMilestone('');
     setDate('');
+    setMilestonePhoto(null);
   };
 
   return (
@@ -208,6 +294,18 @@ function AddMilestone({ onAdd }) {
         onChange={e => setDate(e.target.value)}
         required
       />
+      <label className="pmv-upload-btn pmv-upload-small">
+        {milestonePhoto ? "Change Photo" : "Add Photo"}
+        <input
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handlePhotoChange}
+        />
+      </label>
+      {milestonePhoto && (
+        <img src={milestonePhoto} alt="Milestone Upload Preview" className="pmv-thumb-preview" />
+      )}
       <button className="btn pmv-btn-accent pmv-btn-add-milestone" type="submit">
         Add Milestone
       </button>
@@ -215,9 +313,11 @@ function AddMilestone({ onAdd }) {
   );
 }
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * Milestones component - supports photo for each milestone
+ */
 function Milestones({ milestones, onAddMilestone }) {
-  /** Add and view milestones */
   return (
     <div>
       <section className="pmv-section-header">
@@ -229,6 +329,9 @@ function Milestones({ milestones, onAddMilestone }) {
           <li key={idx} className="pmv-milestone-item">
             <span className="pmv-milestone-date">{new Date(mile.date).toLocaleDateString()}</span>
             <span className="pmv-milestone-text">{mile.text}</span>
+            {mile.photo && (
+              <img src={mile.photo} alt="Milestone visual" className="pmv-thumb-preview" style={{ marginLeft: 14 }} />
+            )}
           </li>
         )}
         {!milestones.length && <div className="pmv-empty-text">No milestones yet. Add one above!</div>}
@@ -237,9 +340,12 @@ function Milestones({ milestones, onAddMilestone }) {
   );
 }
 
-// PUBLIC_INTERFACE
-function Scrapbook({ photos, milestones, descriptions, setDescriptions, onShare }) {
-  /** Digital scrapbook auto-compiling all photos and milestones, user can add/edit descriptions */
+/**
+ * PUBLIC_INTERFACE
+ * Scrapbook component: auto-gathers all Memories, Milestones, Photos section; editable descriptions for each element.
+ */
+function Scrapbook({ photos, milestones, memories, descriptions, setDescriptions, onShare }) {
+  // Gather milestone photos and milestones, plus all photos and memories (with text)
   return (
     <div>
       <section className="pmv-section-header">
@@ -250,9 +356,12 @@ function Scrapbook({ photos, milestones, descriptions, setDescriptions, onShare 
         <h3 className="pmv-scrapbook-subheading">Milestones</h3>
         {milestones.length ? milestones.map((milestone, idx) => (
           <div key={idx} className="pmv-scrapbook-milestone">
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span className="pmv-milestone-date">{new Date(milestone.date).toLocaleDateString()}</span>
               <span className="pmv-milestone-text">{milestone.text}</span>
+              {milestone.photo && (
+                <img src={milestone.photo} alt="Milestone" className="pmv-thumb-preview" />
+              )}
             </div>
             <textarea
               className="pmv-input pmv-scrapbook-desc"
@@ -265,7 +374,33 @@ function Scrapbook({ photos, milestones, descriptions, setDescriptions, onShare 
         )) : <div className="pmv-empty-text">No milestones added yet.</div>}
       </div>
       <div className="pmv-scrapbook-section">
-        <h3 className="pmv-scrapbook-subheading">Photos</h3>
+        <h3 className="pmv-scrapbook-subheading">Memories</h3>
+        {memories.length ? [...memories].sort((a, b) => new Date(b.date) - new Date(a.date)).map((item, idx) => (
+          <div key={idx} className="pmv-scrapbook-milestone">
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+              <span className="pmv-milestone-date">{new Date(item.date).toLocaleString()}</span>
+              {item.age && (
+                <span className="pmv-milestone-text" style={{ fontWeight: 500, color: "#5a90c8" }}>
+                  {item.age} old
+                </span>
+              )}
+              <span className="pmv-milestone-text" style={{ flex: 1 }}>{item.text}</span>
+              {item.photo && (
+                <img src={item.photo} alt="Memory" className="pmv-thumb-preview" />
+              )}
+            </div>
+            <textarea
+              className="pmv-input pmv-scrapbook-desc"
+              placeholder="Add notes for this memory…"
+              value={descriptions[`memory-${idx}`] || ''}
+              onChange={e => setDescriptions(desc => ({ ...desc, [`memory-${idx}`]: e.target.value }))}
+              rows={2}
+            />
+          </div>
+        )) : <div className="pmv-empty-text">No memories yet.</div>}
+      </div>
+      <div className="pmv-scrapbook-section">
+        <h3 className="pmv-scrapbook-subheading">All Uploaded Photos</h3>
         <div className="pmv-photo-grid">
           {photos.length ? photos.map((photo, i) => (
             <div key={i} className="pmv-scrapbook-photo-item">
@@ -310,14 +445,14 @@ function ShareModal({ isOpen, onClose, url }) {
   );
 }
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * Main App container - Home, Timeline, Photos, Milestones, Scrapbook (with navigation)
+ */
 function App() {
-  /**
-   * Main App container: manages in-memory state for memories, photos, milestones, scrapbook notes, and profile image.
-   * All data exists only in browser memory; no backend.
-   */
-  const [currentSection, setCurrentSection] = useState('Timeline');
+  const [currentSection, setCurrentSection] = useState('Home');
   const [profileImage, setProfileImage] = useState('');
+  const [petName, setPetName] = useState('');
   const [memories, setMemories] = useState([]);
   const [photos, setPhotos] = useState([]);
   const [milestones, setMilestones] = useState([]);
@@ -325,39 +460,47 @@ function App() {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
 
-  const handleAddMemory = (memory) => {
-    setMemories((m) => [memory, ...m]);
-    // auto-add photo to scrapbook/photos if present
-    if (memory.photo) setPhotos((p) => [memory.photo, ...p]);
+  // Modified: photo uploads from timeline memories and photos page go to photos and scrapbook,
+  // and milestones now can have photo as well
+  const handleAddMemory = memory => {
+    setMemories(m => [memory, ...m]);
+    if (memory.photo) setPhotos(p => [memory.photo, ...p]);
   };
 
-  const handleUploadPhoto = (photoDataUrl) => {
+  const handleUploadPhoto = photoDataUrl => {
     setPhotos(p => [photoDataUrl, ...p]);
   };
 
-  const handleAddMilestone = (milestone) => {
+  const handleAddMilestone = milestone => {
     setMilestones(m => [milestone, ...m]);
+    if (milestone.photo) setPhotos(p => [milestone.photo, ...p]);
+    // This lets all milestone photos show in Scrapbook/Photos automatically.
   };
 
   const handleShare = () => {
-    // Simulate a shareable link. In a real app, this would be dynamic.
-    let path = window.location.origin + '/?story=pet123';
+    let path = window.location.origin + "/?story=pet123";
     setShareUrl(path);
     setShareModalOpen(true);
   };
 
   // Section rendering logic
   let sectionContent;
-  if (currentSection === 'Timeline') {
+  if (currentSection === 'Home') {
     sectionContent = (
-      <>
-        <div className="pmv-hero pmv-timeline-hero">
-          <PetProfileImage profileImage={profileImage} setProfileImage={setProfileImage} />
-          <h1 className="pmv-main-title">Cherish Every Moment</h1>
-          <div className="pmv-main-description">Capture your pet’s memories and milestones in a beautiful digital vault.</div>
-        </div>
-        <Timeline memories={memories} onAddMemory={handleAddMemory} onShare={handleShare} />
-      </>
+      <Home
+        profileImage={profileImage}
+        setProfileImage={setProfileImage}
+        petName={petName}
+        setPetName={setPetName}
+      />
+    );
+  } else if (currentSection === 'Timeline') {
+    sectionContent = (
+      <Timeline
+        memories={memories}
+        onAddMemory={handleAddMemory}
+        onShare={handleShare}
+      />
     );
   } else if (currentSection === 'Photos') {
     sectionContent = (
@@ -372,6 +515,7 @@ function App() {
       <Scrapbook
         photos={photos}
         milestones={milestones}
+        memories={memories}
         descriptions={scrapDescriptions}
         setDescriptions={setScrapDescriptions}
         onShare={handleShare}
